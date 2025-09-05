@@ -1,0 +1,340 @@
+# TP1
+## I. Prérequis
+### 2. Une paire de clés SSH
+Déterminer quel algorithme de chiffrement utiliser pour vos clés :
+
+**Lequel :**
+ECDSA
+
+**Pourquoi pas RSA :**
+https://www.silicon.fr/Thematique/cybersecurite-1371/Breves/Chiffrement-faut-il-mettre-RSA-en-veilleuse--446780.htm
+
+**Pourquoi ECDSA :**
+https://cyber.gouv.fr/publications/usage-securise-dopenssh
+```
+Page 9 :
+"Lorsque les clients et les serveurs SSH supportent ECDSA, son usage doit être préféré à RSA."
+```
+
+Générer une paire de clés pour ce TP :
+```powershell
+#comande:
+ssh-keygen -t ecdsa -b 256 -f ./.ssh/cloud_tp1
+
+#résultat:
+Generating public/private ecdsa key pair.
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in ./.ssh/cloud_tp1
+Your public key has been saved in ./.ssh/cloud_tp1.pub
+The key fingerprint is:
+SHA256:iLqh+KSFxZV1uGLfX48c4iIzscYKtmnkfzVeJQAD+U4 jacques@DESKTOP-HQPG8AH
+The key's randomart image is:
++---[ECDSA 256]---+
+|    .o+o.        |
+|    .o.o.        |
+|    o. . .       |
+| . .o.E.  . .    |
+|  o..=..S  o     |
+| o..  + + o o    |
+|.oB  . = = + +   |
+|.*o*  O o o o .  |
+|+o=.o+ + .       |
++----[SHA256]-----+
+```
+
+
+Configurer un agent SSH sur votre poste :
+```powershell
+#commande: 
+PS C:\WINDOWS\system32> Add-WindowsCapability -Online -Name OpenSSH.Client
+
+#résultat:
+>>
+
+
+Path          :
+Online        : True
+RestartNeeded : False
+
+```
+```powershell
+#commande:
+Set-Service ssh-agent -StartupType 'Automatic'
+>> Start-Service ssh-agent
+```
+
+```powershell
+#commande :
+ssh-add "C:\Users\Jacques\.ssh\cloud_tp1"
+
+#résultat :
+Enter passphrase for C:\Users\Jacques\.ssh\cloud_tp1:
+Identity added: C:\Users\Jacques\.ssh\cloud_tp1 (jacques@DESKTOP-HQPG8AH)
+```
+
+Je rajoute la commande ci-dessous car j'ai du utilisé cette clé pour la VM par az car le format de la clé que j'ai générée n'est pas acceptée par Azure
+```powershell
+#commande :
+ssh-add "C:\Users\Jacques\.ssh\id_25519"
+
+#résultat :
+Identity added: C:\Users\Jacques\.ssh\id_ed25519 (jacques@DESKTOP-HQPG8AH)
+```
+## II. Spawn des VMs
+### 1. Depuis la WebUI
+Connection en SSH à la VM pour preuve:
+```powershell
+#comande:
+ssh azureuser@20.162.213.136
+
+#résultat:
+Welcome to Ubuntu 24.04.3 LTS (GNU/Linux 6.11.0-1018-azure x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ System information as of Fri Sep  5 10:40:37 UTC 2025
+
+  System load:  0.0               Processes:             112
+  Usage of /:   5.7% of 28.02GB   Users logged in:       0
+  Memory usage: 32%               IPv4 address for eth0: 172.16.0.4
+  Swap usage:   0%
+
+
+Expanded Security Maintenance for Applications is not enabled.
+
+0 updates can be applied immediately.
+
+Enable ESM Apps to receive additional future security updates.
+See https://ubuntu.com/esm or run: sudo pro status
+
+
+The list of available updates is more than a week old.
+To check for new updates run: sudo apt update
+
+Last login: Fri Sep  5 07:48:00 2025 from 216.252.179.121
+To run a command as administrator (user "root"), use "sudo <command>".
+See "man sudo_root" for details.
+
+azureuser@VM-1:~$
+```
+### 2. az : a programmatic approach
+Création de VM depuis le Azure CLI :
+```powershell
+#commande :
+PS C:\Users\Jacques> az login
+
+#résultat:
+Select the account you want to log in with. For more information on login with Azure CLI, see https://go.microsoft.com/fwlink/?linkid=2271136
+
+Retrieving tenants and subscriptions for the selection...
+
+[Tenant and subscription selection]
+
+No     Subscription name    Subscription ID                       Tenant
+-----  -------------------  ------------------------------------  --------
+[1] *  Azure for Students   71332089-961d-4651-b3ff-b748cd2cd134  Efrei
+
+The default is marked with an *; the default tenant is 'Efrei' and subscription is 'Azure for Students' (71332089-961d-4651-b3ff-b748cd2cd134).
+
+Select a subscription and tenant (Type a number or Enter for no changes): 1
+
+Tenant: Efrei
+Subscription: Azure for Students (71332089-961d-4651-b3ff-b748cd2cd134)
+
+[Announcements]
+With the new Azure CLI login experience, you can select the subscription you want to use more easily. Learn more about it and its configuration at https://go.microsoft.com/fwlink/?linkid=2271236
+
+If you encounter any problem, please open an issue at https://aka.ms/azclibug
+
+[Warning] The login output has been updated. Please be aware that it no longer displays the full list of available subscriptions by default.
+
+PS C:\Users\Jacques>
+```
+```powershell
+#commande :
+az vm create `
+  --resource-group GP-JAcques `
+  --name VM2 `
+  --image Ubuntu2204 `
+  --size Standard_B1s `
+  --admin-username azureuser `
+  --ssh-key-values C:\Users\Jacques\.ssh\id_ed25519.pub # je n'utilise pas la clé que je viens de générer car elle refusée par azure malgré sa recommandation par l'ANSI, j'utilise donc la clé utilisée pour la VM créée en WebUI
+
+#résultat :
+The default value of '--size' will be changed to 'Standard_D2s_v5' from 'Standard_DS1_v2' in a future release.
+{
+  "fqdns": "",
+  "id": "/subscriptions/71332089-961d-4651-b3ff-b748cd2cd134/resourceGroups/GP-JAcques/providers/Microsoft.Compute/virtualMachines/VM2",
+  "location": "uksouth",
+  "macAddress": "7C-1E-52-1D-3C-66",
+  "powerState": "VM running",
+  "privateIpAddress": "172.16.0.5",
+PS C:\Users\Jacques>
+```
+Connexion SSH via IP publique :
+```powershell
+#commande :
+ssh azureuser@172.166.164.86
+
+#résultat :
+The authenticity of host '172.166.164.86 (172.166.164.86)' can't be established.
+ED25519 key fingerprint is SHA256:QhKGySy1M5HRjV9AK91a6e2RlQKIzl9DuJFGmIVqn5I.
+This key is not known by any other names.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '172.166.164.86' (ED25519) to the list of known hosts.
+Welcome to Ubuntu 22.04.5 LTS (GNU/Linux 6.8.0-1031-azure x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ System information as of Fri Sep  5 10:47:19 UTC 2025
+
+  System load:  0.0               Processes:             105
+  Usage of /:   5.4% of 28.89GB   Users logged in:       0
+  Memory usage: 31%               IPv4 address for eth0: 172.16.0.5
+  Swap usage:   0%
+
+Expanded Security Maintenance for Applications is not enabled.
+
+0 updates can be applied immediately.
+
+Enable ESM Apps to receive additional future security updates.
+See https://ubuntu.com/esm or run: sudo pro status
+
+
+The list of available updates is more than a week old.
+To check for new updates run: sudo apt update
+
+
+The programs included with the Ubuntu system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Ubuntu comes with ABSOLUTELY NO WARRANTY, to the extent permitted by
+applicable law.
+
+To run a command as administrator (user "root"), use "sudo <command>".
+See "man sudo_root" for details.
+```
+Vérification des services :
+```shell
+#commande:
+azureuser@VM2:~$ systemctl status walinuxagent.service
+
+#résultat:
+Warning: The unit file, source configuration file or drop-ins of walinuxagent.service changed on disk. Run 'systemctl d>
+● walinuxagent.service - Azure Linux Agent
+     Loaded: loaded (/lib/systemd/system/walinuxagent.service; enabled; vendor preset: enabled)
+    Drop-In: /run/systemd/system.control/walinuxagent.service.d
+             └─50-CPUAccounting.conf, 50-MemoryAccounting.conf
+     Active: active (running) since Fri 2025-09-05 10:27:11 UTC; 23min ago
+   Main PID: 732 (python3)
+      Tasks: 7 (limit: 1008)
+     Memory: 45.7M
+        CPU: 2.595s
+     CGroup: /system.slice/walinuxagent.service
+             ├─ 732 /usr/bin/python3 -u /usr/sbin/waagent -daemon
+             └─1091 python3 -u bin/WALinuxAgent-2.14.0.1-py3.12.egg -run-exthandlers
+
+Sep 05 10:27:21 VM2 python3[1091]:        8     1000 ACCEPT     tcp  --  *      *       0.0.0.0/0            168.63.129>
+Sep 05 10:27:21 VM2 python3[1091]:        0        0 DROP       tcp  --  *      *       0.0.0.0/0            168.63.129>
+Sep 05 10:27:21 VM2 python3[1091]: 2025-09-05T10:27:21.764577Z INFO ExtHandler ExtHandler Looking for existing remote a>
+Sep 05 10:27:21 VM2 python3[1091]: 2025-09-05T10:27:21.766442Z INFO ExtHandler ExtHandler [HEARTBEAT] Agent WALinuxAgen>
+Sep 05 10:32:21 VM2 python3[1091]: 2025-09-05T10:32:21.725474Z INFO CollectLogsHandler ExtHandler WireServer endpoint 1>
+Sep 05 10:32:21 VM2 python3[1091]: 2025-09-05T10:32:21.725607Z INFO CollectLogsHandler ExtHandler Wire server endpoint:>
+Sep 05 10:32:21 VM2 python3[1091]: 2025-09-05T10:32:21.725689Z INFO CollectLogsHandler ExtHandler Starting log collecti>
+Sep 05 10:32:32 VM2 python3[1091]: 2025-09-05T10:32:32.432294Z INFO CollectLogsHandler ExtHandler Successfully collecte>
+Sep 05 10:32:32 VM2 python3[1091]: 2025-09-05T10:32:32.444668Z INFO CollectLogsHandler ExtHandler Successfully uploaded>
+Sep 05 10:42:20 VM2 python3[732]: 2025-09-05T10:42:20.520403Z INFO Daemon Agent WALinuxAgent-2.14.0.1 launched with com>
+lines 1-24/24 (END)
+```
+
+```shell
+#commande
+systemctl status cloud-init.service
+#résultat
+● cloud-init.service - Cloud-init: Network Stage
+     Loaded: loaded (/lib/systemd/system/cloud-init.service; enabled; vendor preset: enabled)
+     Active: active (exited) since Fri 2025-09-05 10:27:11 UTC; 55min ago
+   Main PID: 483 (code=exited, status=0/SUCCESS)
+        CPU: 1.341s
+
+Sep 05 10:27:11 VM2 cloud-init[487]: |. *+BoBooo   .   |
+Sep 05 10:27:11 VM2 cloud-init[487]: | .++oo+=+ . o    |
+Sep 05 10:27:11 VM2 cloud-init[487]: |  ooo+o+o. +     |
+Sep 05 10:27:11 VM2 cloud-init[487]: | . o oo.S.+      |
+Sep 05 10:27:11 VM2 cloud-init[487]: |  E o .. . .     |
+Sep 05 10:27:11 VM2 cloud-init[487]: |   .      .      |
+Sep 05 10:27:11 VM2 cloud-init[487]: |                 |
+Sep 05 10:27:11 VM2 cloud-init[487]: |                 |
+Sep 05 10:27:11 VM2 cloud-init[487]: +----[SHA256]-----+
+Sep 05 10:27:11 VM2 systemd[1]: Finished Cloud-init: Network Stage.
+```
+
+### 3. Terraforming ~~planets~~ infrastructures ###
+
+
+
+
+
+
+## 2. Texte
+
+- *Italique*
+- **Gras**
+- ~~Barré~~
+
+---
+
+## 3. Listes
+
+### Liste à puces :
+- Élément 1
+- Élément 2
+  - Sous-élément
+
+### Liste numérotée :
+1. Premier
+2. Deuxième
+3. Troisième
+
+---
+
+## 4. Liens et images
+
+[Lien vers OpenAI](https://openai.com)
+
+![Exemple d'image](https://via.placeholder.com/150)
+
+---
+
+## 5. Citation
+
+> Ceci est une citation en Markdown
+
+---
+
+## 6. Code
+
+En ligne : `print("Hello")`
+
+Bloc :
+
+```python
+def hello():
+    print("Hello Markdown")
+```
+
+---
+
+## 7. Tableaux
+
+| Colonne 1 | Colonne 2 |
+|-----------|-----------|
+| Valeur 1  | Valeur 2  |
+| Valeur 3  | Valeur 4  |
+
