@@ -23,3 +23,8 @@ variable "subscription_id" {
   type        = string
   description = "Azure subscription ID"
 }
+
+variable "ip_public" {
+  type        = string
+  description = "IP publique de connexion"
+}

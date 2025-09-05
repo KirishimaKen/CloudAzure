@@ -17,7 +17,7 @@ Page 9 :
 ```
 
 Générer une paire de clés pour ce TP :
-```powershell
+```shell
 #comande:
 ssh-keygen -t ecdsa -b 256 -f ./.ssh/cloud_tp1
 
@@ -64,7 +64,7 @@ Set-Service ssh-agent -StartupType 'Automatic'
 >> Start-Service ssh-agent
 ```
 
-```powershell
+```shell
 #commande :
 ssh-add "C:\Users\Jacques\.ssh\cloud_tp1"
 
@@ -74,7 +74,7 @@ Identity added: C:\Users\Jacques\.ssh\cloud_tp1 (jacques@DESKTOP-HQPG8AH)
 ```
 
 Je rajoute la commande ci-dessous car j'ai du utilisé cette clé pour la VM par az car le format de la clé que j'ai générée n'est pas acceptée par Azure
-```powershell
+```shell
 #commande :
 ssh-add "C:\Users\Jacques\.ssh\id_25519"
 
@@ -84,7 +84,7 @@ Identity added: C:\Users\Jacques\.ssh\id_ed25519 (jacques@DESKTOP-HQPG8AH)
 ## II. Spawn des VMs
 ### 1. Depuis la WebUI
 Connection en SSH à la VM pour preuve:
-```powershell
+```shell
 #comande:
 ssh azureuser@20.162.213.136
 
@@ -175,7 +175,7 @@ The default value of '--size' will be changed to 'Standard_D2s_v5' from 'Standar
 PS C:\Users\Jacques>
 ```
 Connexion SSH via IP publique :
-```powershell
+```shell
 #commande :
 ssh azureuser@172.166.164.86
 
@@ -278,7 +278,7 @@ Sep 05 10:27:11 VM2 systemd[1]: Finished Cloud-init: Network Stage.
 ### 3. Terraforming ~~planets~~ infrastructures ###
 
 Initialisation Terraform
-```powershell
+```tf
 #commande :
 terraform init
 
@@ -304,7 +304,7 @@ rerun this command to reinitialize your working directory. If you forget, other
 commands will detect it and remind you to do so if necessary.
 ```
 Terraform plan
-```powershell
+```tf
 #commande :
 terraform plan
 
@@ -490,7 +490,7 @@ Note: You didn't use the -out option to save this plan, so Terraform can't guara
 
 Déloiement
 
-```powershell
+```tf
 #commande :
 terraform apply
 
@@ -705,7 +705,7 @@ Apply complete! Resources: 8 added, 0 changed, 0 destroyed.
 
 Connexion SSH
 
-```powershell
+```shell
 #commande :
 ssh azureuser@172.166.222.224
 
@@ -757,8 +757,8 @@ azureuser@VM-Jack:~$
 # TP2 # 
 ## I. Network Security Group ##
 L'ajout du NSG a été effectué dans le déploiement terraform du TP 1 car je n'avais pas vu qu'il était autorisé d'ouvrir le SSH depuis le WebUI
-
-Extrait du main.tf
+## 2. Ajouter un NSG au déploiement ##
+NSG
 ```tf
 resource "azurerm_network_security_group" "main" {
    name                = "VM-nsg"
@@ -771,9 +771,9 @@ resource "azurerm_network_security_group" "main" {
      direction                  = "Inbound"
      access                     = "Allow"
      protocol                   = "Tcp"
-     source_port_range          = "89.87.10.202"
+     source_port_range          = "*"
      destination_port_range     = "22"
-     source_address_prefix      = "*"
+     source_address_prefix      = var.ippublic
      destination_address_prefix = "*"
    }
 }
@@ -782,4 +782,61 @@ resource "azurerm_network_interface_security_group_association" "main" {
   network_interface_id      = azurerm_network_interface.main.id
   network_security_group_id = azurerm_network_security_group.main.id
 }
+```
+## 3. Proofs ! ##
+
+Terraform Apply
+```tf
+#commande :
+terraform apply
+
+#résultat :
+
+
+```
+Commande AZ
+
+```powershell
+#commande :
+
+#résultat :
+
+```
+
+Connexion SSH (pas de  nom de domaine pour le moment, l'ordre des exercices du TP2 avait été inversé)
+```powershell
+#commande :
+
+#résultat :
+
+```
+
+SS + SSH refusé
+```shell
+#commande :
+
+#résultat :
+
+```
+```shell
+#commande :
+
+#résultat :
+
+```
+
+
+
+
+
+
+
+
+
+
+```powershell
+#commande :
+
+#résultat :
+
 ```
