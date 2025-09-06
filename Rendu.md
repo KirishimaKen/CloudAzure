@@ -1230,6 +1230,177 @@ azureuser@VM-Jack:~$
 ```
 ## III. Blob storage ##
 ### 2. Let's go ###
+Extrait du storage.tf
+
+```tf
+resource "azurerm_storage_account" "main" {
+  name                     = var.storage_account_name
+  resource_group_name      = azurerm_resource_group.main.name
+  location                 = azurerm_resource_group.main.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+}
+
+resource "azurerm_storage_container" "main" {
+  name                  = var.storage_container_name
+  storage_account_id    = azurerm_storage_account.main.id
+  container_access_type = "private"
+}
+
+data "azurerm_virtual_machine" "main" {
+  name                = azurerm_linux_virtual_machine.main.name
+  resource_group_name = azurerm_resource_group.main.name
+}
+
+resource "azurerm_role_assignment" "vm_blob_access" {
+  principal_id = data.azurerm_virtual_machine.main.identity[0].principal_id
+  role_definition_name = "Storage Blob Data Contributor"
+  scope                = azurerm_storage_account.main.id
+
+  depends_on = [
+    azurerm_linux_virtual_machine.main
+  ]
+}
+```
+
+Extrait du main.tf
+```tf
+resource "azurerm_linux_virtual_machine" "main" {
+  name                = "VM-Jack"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  size                = "Standard_B1s"
+  admin_username      = var.admin_username
+  network_interface_ids = [
+    azurerm_network_interface.main.id,
+  ]
+
+  admin_ssh_key {
+    username   = var.admin_username
+    public_key = file(var.public_key_path)
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+    name                 = "vm-os-disk"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-focal"
+    sku       = "20_04-lts"
+    version   = "latest"
+  }
+  
+  identity {
+    type = "SystemAssigned"
+  }
+}
+```
+### 3. Proooooooofs ###
+Installation azcopy
+```shell
+#suite de commandes :
+cd /tmp
+wget https://aka.ms/downloadazcopy-v10-linux -O azcopy.tar.gz
+tar -xvf azcopy.tar.gz
+sudo cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
+azcopy --version #pour vérifier l'installation
+```
+azcopy login
+```shell
+#commande :
+azureuser@VM-Jack:/tmp$ azcopy login --identity
+#résultat :
+INFO: Login with identity succeeded.
+```
+
+Création d'un fichier sur la VM
+```shell
+#commande :
+touch /home/azureuser/fichier.txt
+```
+
+Écriture d'un fichier dans le Storage Container
+```shell
+#commande :
+azcopy copy '/home/azureuser/fichier.txt' \
+"https://storageaccjacques.blob.core.windows.net/storagecontjacques/"
+
+#résultat :
+INFO: Scanning...
+INFO: Autologin not specified.
+INFO: Authenticating to destination using Azure AD
+INFO: Any empty folders will not be processed, because source and/or destination doesn't have full folder support
+
+Job 97a8b7dd-3b02-a242-44b7-2f53ff9ac643 has started
+Log file is located at: /home/azureuser/.azcopy/97a8b7dd-3b02-a242-44b7-2f53ff9ac643.log
+
+100.0 %, 1 Done, 0 Failed, 0 Pending, 0 Skipped, 1 Total,
+
+
+Job 97a8b7dd-3b02-a242-44b7-2f53ff9ac643 summary
+Elapsed Time (Minutes): 0.0335
+Number of File Transfers: 1
+Number of Folder Property Transfers: 0
+Number of Symlink Transfers: 0
+Total Number of Transfers: 1
+Number of File Transfers Completed: 1
+Number of Folder Transfers Completed: 0
+Number of File Transfers Failed: 0
+Number of Folder Transfers Failed: 0
+Number of File Transfers Skipped: 0
+Number of Folder Transfers Skipped: 0
+Number of Symbolic Links Skipped: 0
+Number of Hardlinks Converted: 0
+Number of Special Files Skipped: 0
+Total Number of Bytes Transferred: 0
+Final Job Status: Completed
+
+azureuser@VM-Jack:~$
+```
+Lecture d'un fichier dans le Storage Container
+```shell
+#commande :
+
+#résultat :
+
+```
+Explication azcopy login
+
+En ajoutant dans le main.tf l'identity (system assigned) cela permet à Azure de lui attribuer une managed identity (compte spécial créé par azure pour une ressource) 
+
+Lors de la commande azcopy login --identity  
+En premier, Azcopy détecte que la VM possède une managed identity  
+Ensuite Azcopy contacte le service d’identité local de la VM (IMDS) et demande un token d'authentification pour azure storage.  
+Azcopy récupèrele token localement et l'utilise pour toutes les commandes suivantes sans avoir besoin de mdp.
+
+
+Requête d'un JWT d'authentification
+```powershell
+#commande :
+ curl -H "Metadata:true" \
+  "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://storage.azure.com/"
+
+#résultat :
+{"access_token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6IkpZaEFjVFBNWl9MWDZEQmxPV1E3SG4wTmVYRSIsImtpZCI6IkpZaEFjVFBNWl9MWDZEQmxPV1E3SG4wTmVYRSJ9.eyJhdWQiOiJodHRwczovL3N0b3JhZ2UuYXp1cmUuY29tLyIsImlzcyI6Imh0dHBzOi8vc3RzLndpbmRvd3MubmV0LzQxMzYwMGNmLWJkNGUtNGM3Yy04YTYxLTY5ZTczY2RkZjczMS8iLCJpYXQiOjE3NTcxNTMwMzcsIm5iZiI6MTc1NzE1MzAzNywiZXhwIjoxNzU3MjM5NzM3LCJhaW8iOiJrMlJnWURBdFdMODlWTVp1NDdXME9mV1ZpbjdSQUE9PSIsImFwcGlkIjoiOTJjODBlZDctMTYxZi00OGZkLTlkYTQtNmIwMzNhNGE4ODI5IiwiYXBwaWRhY3IiOiIyIiwiaWRwIjoiaHR0cHM6Ly9zdHMud2luZG93cy5uZXQvNDEzNjAwY2YtYmQ0ZS00YzdjLThhNjEtNjllNzNjZGRmNzMxLyIsImlkdHlwIjoiYXBwIiwib2lkIjoiMTE4YTAwNjctNWQ3Zi00ZDhkLTk0ZWItMzZmOTJlZjE4ZjEzIiwicmgiOiIxLkFUc0F6d0EyUVU2OWZFeUtZV25uUE4zM01ZR21CdVRVODZoQ2tMYkNzQ2xKZXZFVkFRQTdBQS4iLCJzdWIiOiIxMThhMDA2Ny01ZDdmLTRkOGQtOTRlYi0zNmY5MmVmMThmMTMiLCJ0aWQiOiI0MTM2MDBjZi1iZDRlLTRjN2MtOGE2MS02OWU3M2NkZGY3MzEiLCJ1dGkiOiJvNTlVRkhVQzlrZXFIb1NqSUllZkFnIiwidmVyIjoiMS4wIiwieG1zX2Z0ZCI6ImRzQ0M1cUZXQUQwSzJHckRmdjI4RjdfbGQ2SkRpc1BsOV9iQ2h4c0hoRUlCZFd0emIzVjBhQzFrYzIxeiIsInhtc19pZHJlbCI6IjcgMzAiLCJ4bXNfbWlyaWQiOiIvc3Vic2NyaXB0aW9ucy83MTMzMjA4OS05NjFkLTQ2NTEtYjNmZi1iNzQ4Y2QyY2QxMzQvcmVzb3VyY2Vncm91cHMvR1AtSmFjcXVlcy9wcm92aWRlcnMvTWljcm9zb2Z0LkNvbXB1dGUvdmlydHVhbE1hY2hpbmVzL1ZNLUphY2siLCJ4bXNfcmQiOiIwLjQyTGxZQkppdEJZUzRlQVVFbERwOWJWYnVlMjI3NlF2NmJveW1rMTZRRkVPSVlIR1pXeFBybnhlNFRSaDI2RU5tcDVWSHdFIiwieG1zX3RkYnIiOiJFVSJ9.cIDQV4y13AVAjiruIAcUAbANuVybFfizHXSS4-WBSv5L-CWOmTyE_88BKd0GwkXMTqHCKX8akHOQBrZcxSWJ3xqeiYhvWtOJHZPSBHi-OeTIvLlfz-ZsdVTFnfZYP985_4G9fW-qRXKHGes4NFXFs4PoTp99ZwLknklKjYpwE-IX6sWJJYW0zu2KYJ0wV1tKvt2aJ_OweeKYOuNhORBD9yRPAh8nt7sDWncy5nz1TnlvG98BCzKxNaAxrCHhpsz_w48BteP2PfpRfiB0i1bYsSKg55n20prp6ByV4WpKrvvPojDo0ljvZhIlHGi27dLcYdAt2z1ptJxFAkafHSFWEg","client_id":"92c80ed7-161f-48fd-9da4-6b033a4a8829","expires_in":"86400","expires_on":"1757239737","ext_expires_in":"86399","not_before":"1757153037","resource":"https://storage.azure.com/","token_type":"Bearer"}
+```
+
+Explication de l'IP joignable
+```shell
+ip route show
+default via 10.0.1.1 dev eth0 proto dhcp src 10.0.1.4 metric 100
+10.0.1.0/24 dev eth0 proto kernel scope link src 10.0.1.4 metric 100
+168.63.129.16 via 10.0.1.1 dev eth0 proto dhcp src 10.0.1.4 metric 100
+169.254.169.254 via 10.0.1.1 dev eth0 proto dhcp src 10.0.1.4 metric 100
+```
+L’adresse 169.254.169.254 est une addresse link-local qui n'est pas routable sur internet.  
+Sur Azure, cette adresse est utilisée pour exposer des services metadata et managed identity aux VM sans que l'adresse ne soit exposée à un autre appareil que la VM elle même.
+
+## IV. Monitoring ##
+### 2. Une alerte CPU ###
+
 
 
 

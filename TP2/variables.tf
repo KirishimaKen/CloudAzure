@@ -26,5 +26,15 @@ variable "subscription_id" {
 
 variable "ip_public" {
   type        = string
-  description = "IP publique de connexion"
+  description = "Public IP Connexion "
+}
+
+variable "storage_account_name" {
+  type        = string
+  description = "Storage Account Name"
+}
+
+variable "storage_container_name" {
+  type        = string
+  description = "Storage Container Name"
 }
