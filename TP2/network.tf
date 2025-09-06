@@ -31,6 +31,7 @@ resource "azurerm_public_ip" "main" {
   resource_group_name = azurerm_resource_group.main.name
   allocation_method   = "Static"
   sku                 = "Standard"
+  domain_name_label   = "vm-jack"
 }
 
 resource "azurerm_network_security_group" "main" {

@@ -757,7 +757,7 @@ azureuser@VM-Jack:~$
 # TP2 # 
 ## I. Network Security Group ##
 L'ajout du NSG a été effectué dans le déploiement terraform du TP 1 car je n'avais pas vu qu'il était autorisé d'ouvrir le SSH depuis le WebUI
-## 2. Ajouter un NSG au déploiement ##
+### 2. Ajouter un NSG au déploiement ###
 NSG
 ```tf
 resource "azurerm_network_security_group" "main" {
@@ -783,7 +783,7 @@ resource "azurerm_network_interface_security_group_association" "main" {
   network_security_group_id = azurerm_network_security_group.main.id
 }
 ```
-## 3. Proofs ! ##
+### 3. Proofs ! ###
 
 Terraform Apply
 ```tf
@@ -1138,10 +1138,98 @@ ssh -p 2222 azureuser@172.166.106.70
 #résultat :
 ssh: connect to host 172.166.106.70 port 2222: Connection timed out
 ```
+## II. Un ptit nom DNS ##
+### 1. Adapter le plan Terraform ###
+
+Extrait azurerm_public_ip
+```tf
+resource "azurerm_public_ip" "main" {
+  name                = "vm-ip"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  domain_name_label   = "vm-jack"
+}
+```
+
+### 2. Ajouter un output custom à terraform apply ###
+
+Extrait du outputs.tf
+
+```tf
+output "vm_public_ip" {
+  description = "Adresse IP publique de la VM"
+  value       = azurerm_public_ip.main.ip_address
+}
+
+output "vm_dns_name" {
+  description = "Nom DNS associé à la VM"
+  value       = azurerm_public_ip.main.fqdn
+}
+```
+### 3. Proooofs ! ###
+
+Résultat du outputs.tf
+```tf
+Apply complete! Resources: 8 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+vm_dns_name = "vm-jack.uksouth.cloudapp.azure.com"
+vm_public_ip = "172.166.161.2"
+```
+
+Connexion SSH
+```shell
+#commande :
+ssh azureuser@vm-jack.uksouth.cloudapp.azure.com
+
+#résultat :
+The authenticity of host 'vm-jack.uksouth.cloudapp.azure.com (172.166.161.2)' can't be established.
+ED25519 key fingerprint is SHA256:O5f5mtSXz+iEP6z2aWm9VIFVc5FdWF8oGj4QKN3IC6g.
+This key is not known by any other names.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added 'vm-jack.uksouth.cloudapp.azure.com' (ED25519) to the list of known hosts.
+Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.15.0-1089-azure x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ System information as of Sat Sep  6 08:47:22 UTC 2025
+
+  System load:  0.55              Processes:             118
+  Usage of /:   5.4% of 28.89GB   Users logged in:       0
+  Memory usage: 31%               IPv4 address for eth0: 10.0.1.4
+  Swap usage:   0%
+
+Expanded Security Maintenance for Applications is not enabled.
+
+0 updates can be applied immediately.
+
+Enable ESM Apps to receive additional future security updates.
+See https://ubuntu.com/esm or run: sudo pro status
 
 
+The list of available updates is more than a week old.
+To check for new updates run: sudo apt update
 
 
+The programs included with the Ubuntu system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Ubuntu comes with ABSOLUTELY NO WARRANTY, to the extent permitted by
+applicable law.
+
+To run a command as administrator (user "root"), use "sudo <command>".
+See "man sudo_root" for details.
+
+azureuser@VM-Jack:~$
+```
+## III. Blob storage ##
+### 2. Let's go ###
 
 
 
