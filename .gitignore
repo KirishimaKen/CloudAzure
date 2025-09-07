@@ -1,0 +1,6 @@
+TP1/terraform.tfvars
+TP1/id_ed25519.pub
+TP2/terraform.tfvars
+TP2/id_ed25519.pub
+.terraform*
+terraform.tfstate*

@@ -1,0 +1,8 @@
+az login
+az vm create `
+  --resource-group GP-JAcques `
+  --name VM2 `
+  --image Ubuntu2204 `
+  --size Standard_B1s `
+  --admin-username azureuser `
+  --ssh-key-values C:\Users\Jacques\.ssh\id_ed25519.pub
