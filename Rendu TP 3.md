@@ -2810,24 +2810,6 @@ reading from file dumpvxlan_bridge.txt, link-type EN10MB (Ethernet), snapshot le
 11:46:51.396136 IP 10.220.220.1.ssh > kvm1.one.44998: Flags [P.], seq 1:37, ack 52, win 249, options [nop,nop,TS val 3166266760 ecr 899786913], length 36
 11:46:51.396166 IP kvm1.one.44998 > 10.220.220.1.ssh: Flags [.], ack 37, win 548, options [nop,nop,TS val 899786914 ecr 3166266760], length 0
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-```shell
-#commande
-
-
-#résultat
-
-```
+<p align="center">
+  <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNzZ6ajEzYnEzbmYwdng5b29zOGtoc3Nhd2k4Y2Zlb25rd2F5cjF2MyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cW64pEEZe0YZa/giphy.gif" alt="Fun GIF" />
+</p>
